@@ -3,13 +3,14 @@ package service
 import (
 	"Diary/src/data/model"
 	"Diary/src/data/repository"
+	"Diary/src/exception"
 )
 
 type DiaryService interface {
-	CreateDiary(username string, password string)
+	CreateDiary(username string, password string) (*model.Diary, error)
 	UnlockDiary(username string, password string)
 	LockDiary(username string)
-	AddEntry(username string, title string, body string)
+	AddEntry(username string, title string, body string) (string, error)
 	UpdateEntry(username string, title string, body string)
 	DeleteEntryBy(username string, title string)
 	DeleteAllEntry(username string)
@@ -17,6 +18,7 @@ type DiaryService interface {
 	FindAllEntry(username string) []model.Entry
 	FindDiaryByUsername(username string) *model.Diary
 	DeleteDiary(username string)
+	CheckIfDiaryIsUnlock(username string) bool
 }
 
 type DiaryServiceImpl struct {
@@ -28,12 +30,14 @@ func NewDiaryServiceImpl() *DiaryServiceImpl {
 	return &DiaryServiceImpl{repository: new(repository.DiaryRepositoryImpl), entry: NewEntryServiceImpl()}
 }
 
-func (d *DiaryServiceImpl) CreateDiary(username string, password string) {
+func (d *DiaryServiceImpl) CreateDiary(username string, password string) (*model.Diary, error) {
 	diary := d.FindDiaryByUsername(username)
-	if diary == nil {
+	if diary == nil && d.CheckIfDiaryIsUnlock(username) == false {
 		newDiary := model.NewDiary(username, password)
 		d.repository.Save(newDiary)
+		return newDiary, nil
 	}
+	return nil, exception.NewDiaryException("Account already exist")
 
 }
 func (d *DiaryServiceImpl) UnlockDiary(username string, password string) {
@@ -56,11 +60,12 @@ func (d *DiaryServiceImpl) LockDiary(username string) {
 
 }
 
-func (d *DiaryServiceImpl) AddEntry(username string, title string, body string) {
+func (d *DiaryServiceImpl) AddEntry(username string, title string, body string) (string, error) {
 	diary := d.FindDiaryByUsername(username)
 	if diary != nil {
-		d.entry.CreateEntry(title, body, diary.Id())
-
+		return d.entry.CreateEntry(title, body, diary.Id())
+	} else {
+		return "nil", exception.NewDiaryException("diary doesn't exist")
 	}
 
 }
@@ -123,6 +128,14 @@ func (d *DiaryServiceImpl) DeleteDiary(username string) {
 	if foundDiary != nil {
 		d.repository.DeleteById(foundDiary.Id())
 
+	}
+}
+func (d *DiaryServiceImpl) CheckIfDiaryIsUnlock(username string) bool {
+	diary := d.FindDiaryByUsername(username)
+	if diary != nil && diary.IsLocked() == false {
+		return true
+	} else {
+		return false
 	}
 
 }

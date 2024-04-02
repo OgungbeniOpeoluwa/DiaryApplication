@@ -3,10 +3,11 @@ package service
 import (
 	"Diary/src/data/model"
 	"Diary/src/data/repository"
+	"Diary/src/exception"
 )
 
 type EntryService interface {
-	CreateEntry(title string, body string, id string)
+	CreateEntry(title string, body string, id string) (string, error)
 	FindAllEntryBelongingTo(diaryId string) []model.Entry
 	UpdateEntry(title string, diaryId string, updatedBody string)
 	FindAnEntry(title string, diaryId string) *model.Entry
@@ -22,12 +23,14 @@ func NewEntryServiceImpl() *EntryServiceImpl {
 	return &EntryServiceImpl{repository: new(repository.EntryRepositoryImpl)}
 }
 
-func (e *EntryServiceImpl) CreateEntry(title string, body string, diaryId string) {
+func (e *EntryServiceImpl) CreateEntry(title string, body string, diaryId string) (string, error) {
 	if !e.checkTitleExist(title, diaryId) {
 		entry := model.NewEntry(title, body, diaryId)
 		e.repository.Save(entry)
+		return entry.Id(), nil
+	} else {
+		return "nil", exception.NewDiaryException("Entry with this " + title + " already exist")
 	}
-
 }
 
 func (e *EntryServiceImpl) checkTitleExist(title string, id string) bool {
